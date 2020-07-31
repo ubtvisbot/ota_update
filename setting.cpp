@@ -1,7 +1,7 @@
 #include "setting.h"
 
 namespace {
-QString CONFIG_FILE{"/home/qlf/ota.conf"};
+QString CONFIG_FILE{"/home/oneai/ota.conf"};
 QString CONFIG_OTA_GROUP{"ota_info"};
 QString OTA_VERSION{"ota_version"};
 }

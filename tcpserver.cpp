@@ -6,44 +6,8 @@
 #include "setting.h"
 #include <QDataStream>
 
-const static quint16 kPort = 17116;
-const static QString kSavePath = "/home/qlf/oneai";
-
-void *readThread(void *arg)
-{
-    TcpServer *ts = (TcpServer *)arg;
-    PacketType type;
-    QByteArray data;
-
-    while (1)
-    {
-        if (ts->waitForRead(ts->m_buff, sizeof(ts->m_packetSize)) != sizeof(ts->m_packetSize))
-        {
-            qDebug() << "read m_packetSize error";
-            return (void *)0;
-        }
-        memcpy(&ts->m_packetSize, ts->m_buff.constData(), sizeof(ts->m_packetSize));
-        ts->m_buff.clear();
-
-        if (ts->waitForRead(ts->m_buff, sizeof(type)) != sizeof(type))
-        {
-            qDebug() << "read type error";
-            return (void *)0;
-        }
-        memcpy(&type, ts->m_buff.constData(), sizeof(type));
-        ts->m_buff.clear();
-
-        if (ts->waitForRead(ts->m_buff, ts->m_packetSize) != ts->m_packetSize)
-        {
-            qDebug() << "read data error";
-            return (void *)0;
-        }
-        ts->processPacket(ts->m_buff, type);
-        ts->m_buff.clear();
-    }
-
-    return (void *)0;
-}
+const static quint16 kPort = 57822;
+const static QString kSavePath = "/home/oneai/oneai";
 
 TcpServer::TcpServer(QObject *parent) : QObject(parent)
 {
@@ -59,49 +23,19 @@ TcpServer::TcpServer(QObject *parent) : QObject(parent)
     m_buff.clear();
     m_receivedBytes = 0;
 
-    m_isData = false;
-
     m_num = 0;
 
-    //    m_otaInfo->fileName = "1234.tar.gz";
-
-    //    int pos = m_otaInfo->fileName.indexOf(".");
-    //    qDebug()<< pos;
-
-    //    QString md5sum = m_otaInfo->fileName.mid(0, pos);
-    //    qDebug()<< md5sum;
-
-    //    QFileInfo fileinfo("/home/qlf/ota.conf.bak");
-    //    //文件名
-    //    QString file_name = fileinfo.fileName();
-    //    //文件后缀
-    //    QString file_suffix = fileinfo.suffix();
-    //    //绝对路径
-    //    QString file_path = fileinfo.absolutePath();
-
-    //    qDebug() << file_name << " " << file_suffix << " " << file_path;
+    qDebug() << "wait for client to connect";
 }
 
 TcpServer::~TcpServer()
 {
     delete m_otaInfo;
+    m_server->close();
+
     if (m_file.isOpen())
     {
         m_file.close();
-    }
-}
-
-void TcpServer::start()
-{
-    int32_t ret = pthread_create(&m_thread_id, NULL, readThread, (void *)this);
-    if(0 != ret)
-    {
-        qDebug("pthread_create return :%d", ret);
-    }
-    else
-    {
-        // 线程退出后，自己释放资源
-        pthread_detach(m_thread_id);
     }
 }
 
@@ -125,10 +59,13 @@ void TcpServer::processHeaderPacket(QByteArray &data)
 
     QString localVersion = Setting::instance().getVersion();
 
-    m_otaInfo->fileName = obj.value("name").toString();
-    m_otaInfo->isSaveData = obj.value("save").toBool();
-    m_otaInfo->version = obj.value("version").toString();
-    m_otaInfo->fileSize = obj.value("size").toVariant().value<qint64>();
+    m_otaInfo->fileName = obj.value("FileName").toString();
+    m_otaInfo->isSaveData = obj.value("IsSaveData").toBool();
+    m_otaInfo->version = obj.value("Version").toString();
+    m_otaInfo->fileSize = obj.value("FileSize").toVariant().value<qint64>();
+
+    qDebug() << "fileName: " << m_otaInfo->fileName<< " ,m_otaInfo->isSaveData: " << m_otaInfo->isSaveData<< " ,m_otaInfo->version: "
+             << m_otaInfo->version<< " ,m_otaInfo->fileSize: " << m_otaInfo->fileSize;
 
     QDir dir(kSavePath);
     if (!dir.exists()) {
@@ -158,7 +95,7 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     }
 
     QJsonObject objReplay(QJsonObject::fromVariantMap({
-                                                          {"size", m_receivedBytes}
+                                                          {"FileSize", m_receivedBytes}
                                                       }));
 
     QByteArray headerData(QJsonDocument(objReplay).toJson());
@@ -166,22 +103,18 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     qint32 packetSize = headerData.size();
 
     writePacket(packetSize, type, headerData);
-    m_receivedBytes = 0;
+    qDebug() << "m_receivedBytes: " << m_receivedBytes;
 }
 
 void TcpServer::processDataPacket(QByteArray &data)
 {
     qDebug() << __func__;
+
     if (!m_file.isOpen())
     {
         QString filePath =  kSavePath + "/" +  m_otaInfo->fileName; // "test.log"; //m_otaInfo->fileName;
 
         m_file.setFileName(filePath);
-
-        if (m_file.exists())
-        {
-            m_file.remove();
-        }
 
         if (!m_file.open(QIODevice::Append))
         {
@@ -190,18 +123,17 @@ void TcpServer::processDataPacket(QByteArray &data)
         }
     }
 
-    QDataStream out(&m_file);
-    if (m_receivedBytes + data.size() <= m_otaInfo->fileSize)
+    if (m_file.isOpen() && m_receivedBytes + data.size() <= m_otaInfo->fileSize)
     {
-        //        m_file.write(data);
+        QDataStream out(&m_file);
         out.writeRawData(data.constData(), data.size());
+//        m_file.write(data);
         m_file.flush();
         m_receivedBytes += data.size();
         m_num++;
-        qDebug() << "num " << m_num << " m_receivedBytes " << data.size();
+        qDebug() << "num " << m_num << " received Bytes " << data.size();
     }
-    //    qDebug() << "m_receivedBytes " << m_receivedBytes;
-    //    qDebug() << "m_otaInfo->fileSize " << m_otaInfo->fileSize;
+        qDebug() << "m_receivedBytes " << m_receivedBytes;
 }
 
 void TcpServer::processFinishPacket()
@@ -242,14 +174,16 @@ void TcpServer::processFinishPacket()
         if (!md5sumOrignal.compare(QString(md5sumNew)))
         {
             result = 1; // 校验成功
+            qDebug() << "md5sum success";
         }
         else
         {
             result = 0; // 校验失败
+            qDebug() << "md5sum fail";
         }
 
         QJsonObject obj(QJsonObject::fromVariantMap({
-                                                        {"result", result}
+                                                        {"Result", result}
                                                     }));
 
         QByteArray headerData(QJsonDocument(obj).toJson());
@@ -257,7 +191,6 @@ void TcpServer::processFinishPacket()
         qint32 packetSize = headerData.size();
 
         writePacket(packetSize, type, headerData);
-
     }
     else
     {
@@ -287,22 +220,6 @@ void TcpServer::writePacket(qint32 packetDataSize, PacketType type, const QByteA
     }
 }
 
-qint32 TcpServer::waitForRead(QByteArray &data, const qint32 bytes)
-{
-    while (m_socket->bytesAvailable() < bytes)
-    {
-        if (!m_socket->waitForReadyRead())
-        {
-            qDebug() << "time out~~~~~~~~~~~~~~~~~~~~~~~";
-            qDebug() << "m_socket->bytesAvailable(): " << m_socket->bytesAvailable();
-            return -1;
-        }
-    }
-
-    data = m_socket->read(bytes);
-    return data.size();
-}
-
 void TcpServer::onAcceptConnection()
 {
     m_socket = m_server->nextPendingConnection();
@@ -312,65 +229,23 @@ void TcpServer::onAcceptConnection()
     QString log = QString("[%1:%2] connect sucess").arg(ip).arg(port);
     qDebug() << log;
 
-    //    connect(m_socket, SIGNAL(readyRead()), this, SLOT(onReadFromClient()));
+    connect(m_socket, SIGNAL(readyRead()), this, SLOT(onReadFromClient()));
     connect(m_socket, &QTcpSocket::disconnected, this, &TcpServer::onDisconnected);
-
-    start();
 }
 
 void TcpServer::onReadFromClient()
 {
-    m_buff.append(m_socket->readAll());
-    //    processDataPacket(m_buff);
-    //    m_buff.clear();
-
     qint64 allSize = m_socket->bytesAvailable();
-    qDebug() << m_socket->bytesAvailable();
+    m_buff.append(m_socket->readAll());
 
-    while (allSize >= m_headerSize)
-    {
+    qDebug() << "read all bytes available: " << allSize;
 
-    }
-#if 1
     PacketType type;
     QByteArray data;
 
-    //    char buff[1024 * 200];
-    //    m_buff = m_socket->read(m_headerSize);
-    //    memcpy(&m_packetSize, m_buff.constData(), sizeof(m_packetSize));
-    //    m_buff.remove(0, sizeof(m_packetSize));
-
-    //    type = static_cast<PacketType>(m_buff.at(0));
-    //    m_buff.remove(0, sizeof(type));
-
-    //    m_buff = m_socket->read(buff, m_headerSize);
-    //    memcpy(&m_packetSize, buff, sizeof(m_packetSize));
-    //    type = static_cast<PacketType>(buff[4]);
-
-
-    qDebug() << "m_packetSize " <<m_packetSize <<", type " << (int)type;
-
-
-    m_buff = m_socket->read(m_packetSize);
-    qDebug() << "m_buff size " << m_buff.size();
-    processPacket(m_buff, type);
-    m_buff.clear();
-
-    //    if (m_buff.size() >= m_packetSize) {
-
-    //        data = m_buff.mid(0, m_packetSize);
-    //        //            qDebug() << "data " << data;
-
-    //        m_buff.remove(0, data.size());
-    //        processPacket(data, type);
-    //        m_isData = false;
-    //    }
-#endif
-
-#if 0
     while (m_buff.size() >= m_headerSize)
     {
-        if (!m_isData)
+        if (m_packetSize < 0)
         {
             memcpy(&m_packetSize, m_buff.constData(), sizeof(m_packetSize));
             m_buff.remove(0, sizeof(m_packetSize));
@@ -380,27 +255,25 @@ void TcpServer::onReadFromClient()
             qDebug() << "m_packetSize " <<m_packetSize <<", type " << (int)type << ",m_buff size " << m_buff.size();
         }
 
-        if (m_buff.size() >= m_packetSize) {
-
+        if (m_buff.size() >= m_packetSize)
+        {
             data = m_buff.mid(0, m_packetSize);
-            //            qDebug() << "data " << data;
+
+            processPacket(data, type);
 
             m_buff.remove(0, data.size());
-            processPacket(data, type);
-            m_isData = false;
+            m_packetSize = -1;
         }
         else
         {
-            m_isData = true;
-            qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1";
             break;
         }
     }
-#endif
 }
 
 void TcpServer::onDisconnected()
 {
-    qDebug() << "address " << m_socket->peerAddress();
-    qDebug() << "port" <<m_socket->peerPort();
+    qDebug() << "Disconnected address " << m_socket->peerAddress();
+    qDebug() << "Disconnected port" <<m_socket->peerPort();
+    m_buff.clear();
 }
