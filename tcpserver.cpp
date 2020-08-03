@@ -5,9 +5,10 @@
 #include <QFileInfo>
 #include "setting.h"
 #include <QDataStream>
+#include <QDir>
 
 const static quint16 kPort = 57822;
-const static QString kSavePath = "/home/qlf/oneai";
+const static QString kSavePath = QDir::homePath() + "/oneai";
 qint64 allSize = 0;
 int times = 0;
 int failTimes = 0;

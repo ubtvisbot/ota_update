@@ -1,7 +1,8 @@
 #include "setting.h"
+#include <QDir>
 
 namespace {
-QString CONFIG_FILE{"/home/oneai/ota.conf"};
+QString CONFIG_FILE{"ota.conf"};
 QString CONFIG_OTA_GROUP{"ota_info"};
 QString OTA_VERSION{"ota_version"};
 }
@@ -20,7 +21,8 @@ Setting& Setting::instance()
 
 QString Setting::getVersion()
 {
-    if (contains(OTA_VERSION))
+    QString path = QDir::homePath() + "/" + CONFIG_FILE;
+    if (contains(path))
     {
         return value(OTA_VERSION).toString();
     }
