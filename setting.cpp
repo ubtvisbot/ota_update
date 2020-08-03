@@ -21,8 +21,7 @@ Setting& Setting::instance()
 
 QString Setting::getVersion()
 {
-    QString path = QDir::homePath() + "/" + CONFIG_FILE;
-    if (contains(path))
+    if (contains(OTA_VERSION))
     {
         return value(OTA_VERSION).toString();
     }
