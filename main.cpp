@@ -2,6 +2,7 @@
 #include <QApplication>
 #include "tcpserver.h"
 #include <QString>
+#include <QDir>
 
 int main(int argc, char *argv[])
 {
@@ -10,5 +11,6 @@ int main(int argc, char *argv[])
 //    w.show();
     TcpServer tcpServer;
 
+    qDebug() << "home path " << QDir::homePath();
     return a.exec();
 }
