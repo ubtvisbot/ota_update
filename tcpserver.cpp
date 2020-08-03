@@ -7,7 +7,12 @@
 #include <QDataStream>
 
 const static quint16 kPort = 57822;
-const static QString kSavePath = "/home/oneai/oneai";
+const static QString kSavePath = "/home/qlf/oneai";
+qint64 allSize = 0;
+int times = 0;
+int failTimes = 0;
+int headTimes = 0;
+int dataTimes = 0;
 
 TcpServer::TcpServer(QObject *parent) : QObject(parent)
 {
@@ -86,6 +91,7 @@ void TcpServer::processHeaderPacket(QByteArray &data)
             qDebug() << cmd;
             system(cmd.toStdString().c_str());
             Setting::instance().setVersion(m_otaInfo->version);
+            m_receivedBytes = 0;
         }
     }
     else
@@ -112,6 +118,8 @@ void TcpServer::processDataPacket(QByteArray &data)
 
     if (!m_file.isOpen())
     {
+        failTimes++;
+        qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! file is not open: " << failTimes;
         QString filePath =  kSavePath + "/" +  m_otaInfo->fileName; // "test.log"; //m_otaInfo->fileName;
 
         m_file.setFileName(filePath);
@@ -131,9 +139,10 @@ void TcpServer::processDataPacket(QByteArray &data)
         m_file.flush();
         m_receivedBytes += data.size();
         m_num++;
-        qDebug() << "num " << m_num << " received Bytes " << data.size();
+        qDebug() << "num: " << m_num << " received Bytes " << data.size();
     }
-        qDebug() << "m_receivedBytes " << m_receivedBytes;
+    times++;
+    qDebug() << "times: "<< times<< ",m_receivedBytes " << m_receivedBytes << endl;
 }
 
 void TcpServer::processFinishPacket()
@@ -235,12 +244,14 @@ void TcpServer::onAcceptConnection()
 
 void TcpServer::onReadFromClient()
 {
-    qint64 allSize = m_socket->bytesAvailable();
+    int len = m_socket->bytesAvailable();
+
+    allSize += m_socket->bytesAvailable();
     m_buff.append(m_socket->readAll());
 
-    qDebug() << "read all bytes available: " << allSize;
+    qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!read all bytes available: " << allSize << ", number is: " << len;
 
-    PacketType type;
+//    m_num = 0;
     QByteArray data;
 
     while (m_buff.size() >= m_headerSize)
@@ -250,14 +261,29 @@ void TcpServer::onReadFromClient()
             memcpy(&m_packetSize, m_buff.constData(), sizeof(m_packetSize));
             m_buff.remove(0, sizeof(m_packetSize));
 
-            type = static_cast<PacketType>(m_buff.at(0));
-            m_buff.remove(0, sizeof(type));
-            qDebug() << "m_packetSize " <<m_packetSize <<", type " << (int)type << ",m_buff size " << m_buff.size();
+//            type = static_cast<PacketType>(m_buff.at(0));
+//            m_buff.remove(0, sizeof(type));
+//            if (type == PacketType::Data)
+//            {
+                headTimes++;
+//            }
+
+            qDebug() << "headtimes: " << headTimes << ",m_packetSize " <<m_packetSize << ",m_buff size " << m_buff.size();
         }
 
-        if (m_buff.size() >= m_packetSize)
+        if (m_buff.size() > m_packetSize)
         {
+            PacketType type;
+            type = static_cast<PacketType>(m_buff.at(0));
+            m_buff.remove(0, sizeof(type));
+            if (type == PacketType::Data)
+            {
+                dataTimes++;
+            }
+
+            qDebug() << "dataTimes: " << dataTimes << ",m_packetSize " <<m_packetSize <<", type " << (int)type << ",m_buff size " << m_buff.size();
             data = m_buff.mid(0, m_packetSize);
+//            m_receivedBytes += data.size();
 
             processPacket(data, type);
 
