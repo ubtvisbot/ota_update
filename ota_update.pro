@@ -5,11 +5,15 @@
 #-------------------------------------------------
 
 QT       += core gui network
+#x11extras
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = ota_update
 TEMPLATE = app
+
+#CONFIG += c++11
+#CONFIG += rtti
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -27,12 +31,26 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     tcpserver.cpp \
-    setting.cpp
+    setting.cpp \
+    log.cpp \
+    updatewindow.cpp \
+    updatefailwindow.cpp \
+    updatesuccesswindow.cpp
 
 HEADERS += \
         mainwindow.h \
     tcpserver.h \
-    setting.h
+    setting.h \
+    log.h \
+    updatewindow.h \
+    updatefailwindow.h \
+    updatesuccesswindow.h
 
 FORMS += \
-        mainwindow.ui
+        mainwindow.ui \
+    updatewindow.ui \
+    updatefailwindow.ui \
+    updatesuccesswindow.ui
+
+RESOURCES += \
+    image.qrc

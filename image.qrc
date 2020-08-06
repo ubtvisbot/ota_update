@@ -1,0 +1,69 @@
+<RCC>
+    <qresource prefix="/img">
+        <file>resources/update/upgrade _00000.png</file>
+        <file>resources/update/upgrade _00001.png</file>
+        <file>resources/update/upgrade _00002.png</file>
+        <file>resources/update/upgrade _00003.png</file>
+        <file>resources/update/upgrade _00004.png</file>
+        <file>resources/update/upgrade _00005.png</file>
+        <file>resources/update/upgrade _00006.png</file>
+        <file>resources/update/upgrade _00007.png</file>
+        <file>resources/update/upgrade _00008.png</file>
+        <file>resources/update/upgrade _00009.png</file>
+        <file>resources/update/upgrade _00010.png</file>
+        <file>resources/update/upgrade _00011.png</file>
+        <file>resources/update/upgrade _00012.png</file>
+        <file>resources/update/upgrade _00013.png</file>
+        <file>resources/update/upgrade _00014.png</file>
+        <file>resources/update/upgrade _00015.png</file>
+        <file>resources/update/upgrade _00016.png</file>
+        <file>resources/update/upgrade _00017.png</file>
+        <file>resources/update/upgrade _00018.png</file>
+        <file>resources/update/upgrade _00019.png</file>
+        <file>resources/update/upgrade _00020.png</file>
+        <file>resources/update/upgrade _00021.png</file>
+        <file>resources/update/upgrade _00022.png</file>
+        <file>resources/update/upgrade _00023.png</file>
+        <file>resources/update/upgrade _00024.png</file>
+        <file>resources/update/upgrade _00025.png</file>
+        <file>resources/update/upgrade _00026.png</file>
+        <file>resources/update/upgrade _00027.png</file>
+        <file>resources/update/upgrade _00028.png</file>
+        <file>resources/update/upgrade _00029.png</file>
+        <file>resources/update/upgrade _00030.png</file>
+        <file>resources/update/upgrade _00031.png</file>
+        <file>resources/update/upgrade _00032.png</file>
+        <file>resources/update/upgrade _00033.png</file>
+        <file>resources/update/upgrade _00034.png</file>
+        <file>resources/update/upgrade _00035.png</file>
+        <file>resources/update/upgrade _00036.png</file>
+        <file>resources/update/upgrade _00037.png</file>
+        <file>resources/update/upgrade _00038.png</file>
+        <file>resources/update/upgrade _00039.png</file>
+        <file>resources/update/upgrade _00040.png</file>
+        <file>resources/update/upgrade _00041.png</file>
+        <file>resources/update/upgrade _00042.png</file>
+        <file>resources/update/upgrade _00043.png</file>
+        <file>resources/update/upgrade _00044.png</file>
+        <file>resources/update/upgrade _00045.png</file>
+        <file>resources/update/upgrade _00046.png</file>
+        <file>resources/update/upgrade _00047.png</file>
+        <file>resources/update/upgrade _00048.png</file>
+        <file>resources/update/upgrade _00049.png</file>
+        <file>resources/update/upgrade _00050.png</file>
+        <file>resources/update/upgrade _00051.png</file>
+        <file>resources/update/upgrade _00052.png</file>
+        <file>resources/update/upgrade _00053.png</file>
+        <file>resources/update/upgrade _00054.png</file>
+        <file>resources/update/upgrade _00055.png</file>
+        <file>resources/update/upgrade _00056.png</file>
+        <file>resources/update/upgrade _00057.png</file>
+        <file>resources/update/upgrade _00058.png</file>
+        <file>resources/update/upgrade _00059.png</file>
+        <file>resources/update/upgrade _00060.png</file>
+        <file>resources/update/upgrade _00061.png</file>
+        <file>resources/result/img_bg_cover.png</file>
+        <file>resources/result/img_failed.png</file>
+        <file>resources/result/img_success.png</file>
+    </qresource>
+</RCC>

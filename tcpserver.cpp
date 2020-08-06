@@ -6,16 +6,19 @@
 #include "setting.h"
 #include <QDataStream>
 #include <QDir>
+#include "log.h"
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(server, "tcpserver")
 
 const static quint16 kPort = 57822;
 const static QString kSavePath = QDir::homePath() + "/oneai";
-qint64 allSize = 0;
-int times = 0;
-int failTimes = 0;
-int headTimes = 0;
-int dataTimes = 0;
+const static QString kRecoverPath = "/opt/ota_package/ubtech/recovery.sh";
 
-TcpServer::TcpServer(QObject *parent) : QObject(parent)
+static int headTimes = 0;
+static int dataTimes = 0;
+
+TcpServer::TcpServer(MainWindow *w, QObject *parent) : m_w(w), QObject(parent)
 {
     m_server = new QTcpServer();
     m_server->listen(QHostAddress::Any, kPort);
@@ -31,7 +34,7 @@ TcpServer::TcpServer(QObject *parent) : QObject(parent)
 
     m_num = 0;
 
-    qDebug() << "wait for client to connect";
+    qCDebug(server()) << "wait for client to connect ...";
 }
 
 TcpServer::~TcpServer()
@@ -59,7 +62,19 @@ void TcpServer::processPacket(QByteArray &data, PacketType type)
 
 void TcpServer::processHeaderPacket(QByteArray &data)
 {
-    qDebug() << __func__;
+    qCDebug(server()) << "enter " << __func__;
+
+    m_w->show();
+
+    setWakeup();
+
+    if (!isSpaceEnough())
+    {
+        qWarning(server()) << "the free space is not enough!";
+        sendFinishMsg(emAiboxState::eAiboxFileSendingPause);
+        startRestore();
+        return;
+    }
 
     QJsonObject obj = QJsonDocument::fromJson(data).object();
 
@@ -70,8 +85,14 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     m_otaInfo->version = obj.value("Version").toString();
     m_otaInfo->fileSize = obj.value("FileSize").toVariant().value<qint64>();
 
-    qDebug() << "fileName: " << m_otaInfo->fileName<< " ,m_otaInfo->isSaveData: " << m_otaInfo->isSaveData<< " ,m_otaInfo->version: "
+    qCDebug(server()) << "fileName: " << m_otaInfo->fileName<< " ,m_otaInfo->isSaveData: " << m_otaInfo->isSaveData<< " ,m_otaInfo->version: "
              << m_otaInfo->version<< " ,m_otaInfo->fileSize: " << m_otaInfo->fileSize;
+
+    if (m_otaInfo->fileName.isEmpty())
+    {
+        sendFinishMsg(emAiboxState::eAiboxFileSendingFail);
+        return;
+    }
 
     QDir dir(kSavePath);
     if (!dir.exists()) {
@@ -89,7 +110,7 @@ void TcpServer::processHeaderPacket(QByteArray &data)
         else
         {
             QString cmd = "rm -f " + filePath;
-            qDebug() << cmd;
+            qCDebug(server()) << cmd;
             system(cmd.toStdString().c_str());
             Setting::instance().setVersion(m_otaInfo->version);
             m_receivedBytes = 0;
@@ -110,25 +131,23 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     qint32 packetSize = headerData.size();
 
     writePacket(packetSize, type, headerData);
-    qDebug() << "m_receivedBytes: " << m_receivedBytes;
+    qCDebug(server()) << "send to client m_receivedBytes: " << m_receivedBytes;
 }
 
 void TcpServer::processDataPacket(QByteArray &data)
 {
-    qDebug() << __func__;
+    qCDebug(server()) << "enter " << __func__;
 
     if (!m_file.isOpen())
     {
-        failTimes++;
-        qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! file is not open: " << failTimes;
         QString filePath =  kSavePath + "/" +  m_otaInfo->fileName; // "test.log"; //m_otaInfo->fileName;
 
         m_file.setFileName(filePath);
 
         if (!m_file.open(QIODevice::Append))
         {
-            qDebug() << "open " << filePath << " fail!";
-            exit(-1);
+            qCCritical(server()) << "open " << filePath << " fail!";
+            return;
         }
     }
 
@@ -136,21 +155,19 @@ void TcpServer::processDataPacket(QByteArray &data)
     {
         QDataStream out(&m_file);
         out.writeRawData(data.constData(), data.size());
-//        m_file.write(data);
+
         m_file.flush();
         m_receivedBytes += data.size();
         m_num++;
-        qDebug() << "num: " << m_num << " received Bytes " << data.size();
+        qCDebug(server()) << "num: " << m_num << " received Bytes " << data.size();
     }
-    times++;
-    qDebug() << "times: "<< times<< ",m_receivedBytes " << m_receivedBytes << endl;
 }
 
 void TcpServer::processFinishPacket()
 {
-    qDebug() << __func__;
-    qDebug() << "m_receivedBytes " << m_receivedBytes;
-    qDebug() << "m_otaInfo->fileSize " << m_otaInfo->fileSize;
+    qCDebug(server()) << "enter " << __func__;
+    qCDebug(server()) << "tcpserver received Bytes " << m_receivedBytes;
+    qCDebug(server()) << "client file size " << m_otaInfo->fileSize;
 
     if (m_file.isOpen())
     {
@@ -159,12 +176,12 @@ void TcpServer::processFinishPacket()
 
     int pos = m_otaInfo->fileName.indexOf(".");
     QString md5sumOrignal = m_otaInfo->fileName.mid(0, pos);
-    qDebug() << "md5sumOrignal" << md5sumOrignal;
+    qCDebug(server()) << "orignal md5sum: " << md5sumOrignal;
 
     QString fullPath = kSavePath + "/" + m_otaInfo->fileName;
     QString cmd = "md5sum " + fullPath;
 
-    qDebug() << "cmd " << cmd;
+    qCDebug(server()) << "cmd " << cmd;
     FILE *fp = popen(cmd.toStdString().data(), "r");
     if (fp)
     {
@@ -177,57 +194,115 @@ void TcpServer::processFinishPacket()
         int pos = md5sumNew.indexOf(" ");
         md5sumNew = md5sumNew.mid(0, pos);
 
-        qDebug() << "md5sumNew " << md5sumNew;
+        qCDebug(server()) << "new md5sum: " << md5sumNew;
 
-        int result = -1;
+        emAiboxState result = emAiboxState::eAiboxIdle;
 
         if (!md5sumOrignal.compare(QString(md5sumNew)))
         {
-            result = 1; // 校验成功
-            qDebug() << "md5sum success";
+            result = emAiboxState::eAiboxFileSendingSuccess; // 校验成功
+            qCDebug(server()) << "md5sum success";
+            sendFinishMsg(result);
+            startUpdate();
         }
         else
         {
-            result = 0; // 校验失败
-            qDebug() << "md5sum fail";
+            result = emAiboxState::eAiboxFileSendingFail; // 校验失败
+            qCWarning(server()) << "md5sum fail";
+            sendFinishMsg(result);
         }
-
-        QJsonObject obj(QJsonObject::fromVariantMap({
-                                                        {"Result", result}
-                                                    }));
-
-        QByteArray headerData(QJsonDocument(obj).toJson());
-        PacketType type = PacketType::Finish;
-        qint32 packetSize = headerData.size();
-
-        writePacket(packetSize, type, headerData);
     }
     else
     {
-        qDebug() << "exec command md5sum fail";
-        exit(-1);
+        qCCritical(server()) << "exec command md5sum fail";
+        sendFinishMsg(emAiboxState::eAiboxFileSendingFail);
     }
 }
 
 void TcpServer::processRestorePacket()
 {
-    qDebug() << __func__;
+    qCDebug(server()) << "enter " << __func__;
+    startRestore();
 }
 
 void TcpServer::processStopPacket()
 {
-    qDebug() << __func__;
+    qCDebug(server()) << "enter " << __func__;
+}
+
+void TcpServer::sendFinishMsg(int result)
+{
+    qCDebug(server()) << "enter " << __func__;
+
+    QJsonObject objReplay(QJsonObject::fromVariantMap({
+                                                          {"Result", result}
+                                                      }));
+
+    QByteArray headerData(QJsonDocument(objReplay).toJson());
+    PacketType type = PacketType::Finish;
+    qint32 packetSize = headerData.size();
+
+    writePacket(packetSize, type, headerData);
 }
 
 void TcpServer::writePacket(qint32 packetDataSize, PacketType type, const QByteArray &data)
 {
-    qDebug() << __func__;
+    qCDebug(server()) << "enter " << __func__;
     if (m_socket)
     {
         m_socket->write(reinterpret_cast<const char*>(&packetDataSize), sizeof(packetDataSize));
         m_socket->write(reinterpret_cast<const char*>(&type), sizeof(type));
         m_socket->write(data);
     }
+}
+
+void TcpServer::setWakeup()
+{
+    QString cmd = "xset dpms 0 0 0";
+    system(cmd.toStdString().data());
+}
+
+bool TcpServer::isSpaceEnough()
+{
+    const QString cmd = "df / -l --output=avail | tail -1";
+
+    FILE *fp = popen(cmd.toStdString().data(), "r");
+    if (!fp)
+    {
+        qCCritical(server()) << "popen " << cmd << " fail!";
+        return false;
+    }
+
+    const qint64 needSpace = (qint64)1000*1024*1024*1024;
+
+    char result[128] = {0};
+    fread(result, 1, sizeof(result), fp);
+    pclose(fp);
+
+    QString freeSize = result;
+
+    qint64 freeSpace = freeSize.toLongLong();
+
+    qCDebug(server()) << " free space is " << freeSpace << ", need space is " << needSpace;
+
+    if (freeSpace <= needSpace)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+void TcpServer::startUpdate()
+{
+    QString update = kRecoverPath + "update";
+    system(update.toStdString().data());
+}
+
+void TcpServer::startRestore()
+{
+    QString restore = kRecoverPath + "restore";
+    system(restore.toStdString().data());
 }
 
 void TcpServer::onAcceptConnection()
@@ -237,7 +312,7 @@ void TcpServer::onAcceptConnection()
     QString ip =  m_socket->peerAddress().toString();
     quint16 port = m_socket->peerPort();
     QString log = QString("[%1:%2] connect sucess").arg(ip).arg(port);
-    qDebug() << log;
+    qCDebug(server()) << log;
 
     connect(m_socket, SIGNAL(readyRead()), this, SLOT(onReadFromClient()));
     connect(m_socket, &QTcpSocket::disconnected, this, &TcpServer::onDisconnected);
@@ -245,14 +320,8 @@ void TcpServer::onAcceptConnection()
 
 void TcpServer::onReadFromClient()
 {
-    int len = m_socket->bytesAvailable();
-
-    allSize += m_socket->bytesAvailable();
     m_buff.append(m_socket->readAll());
 
-    qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!read all bytes available: " << allSize << ", number is: " << len;
-
-//    m_num = 0;
     QByteArray data;
 
     while (m_buff.size() >= m_headerSize)
@@ -262,14 +331,8 @@ void TcpServer::onReadFromClient()
             memcpy(&m_packetSize, m_buff.constData(), sizeof(m_packetSize));
             m_buff.remove(0, sizeof(m_packetSize));
 
-//            type = static_cast<PacketType>(m_buff.at(0));
-//            m_buff.remove(0, sizeof(type));
-//            if (type == PacketType::Data)
-//            {
-                headTimes++;
-//            }
-
-            qDebug() << "headtimes: " << headTimes << ",m_packetSize " <<m_packetSize << ",m_buff size " << m_buff.size();
+            headTimes++;
+            qCDebug(server()) << "head number: " << headTimes << ",m_packetSize " << m_packetSize << ", remain m_buff size " << m_buff.size();
         }
 
         if (m_buff.size() > m_packetSize)
@@ -282,9 +345,8 @@ void TcpServer::onReadFromClient()
                 dataTimes++;
             }
 
-            qDebug() << "dataTimes: " << dataTimes << ",m_packetSize " <<m_packetSize <<", type " << (int)type << ",m_buff size " << m_buff.size();
             data = m_buff.mid(0, m_packetSize);
-//            m_receivedBytes += data.size();
+            qCDebug(server()) << "data number: " << dataTimes << ", type " << (int)type << ",m_packetSize " << m_packetSize << ", remain m_buff size " << m_buff.size();
 
             processPacket(data, type);
 
@@ -300,7 +362,16 @@ void TcpServer::onReadFromClient()
 
 void TcpServer::onDisconnected()
 {
-    qDebug() << "Disconnected address " << m_socket->peerAddress();
-    qDebug() << "Disconnected port" <<m_socket->peerPort();
+    qCDebug(server()) << "Disconnected address " << m_socket->peerAddress();
+    qCDebug(server()) << "Disconnected port" <<m_socket->peerPort();
+
+    m_w->hide();
+    if (m_file.isOpen())
+    {
+        m_file.close();
+    }
     m_buff.clear();
+    dataTimes = 0;
+    headTimes = 0;
+    m_num = 0;
 }

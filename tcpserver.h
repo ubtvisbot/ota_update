@@ -9,6 +9,7 @@
 #include <QString>
 #include <QFile>
 #include <string>
+#include "mainwindow.h"
 
 using namespace std;
 
@@ -19,6 +20,21 @@ enum class PacketType : char
     Finish,
     Restore,
     Stop
+};
+
+enum emAiboxState
+{
+    eAiboxIdle= 0,              //空闲状态
+    eAiboxToUpdate = 1,         //升级中
+    eAiboxUpdateSuccess,        //升级成功
+    eAiboxUpdateFail,           //升级失败
+    eAiboxToRestore,            //恢复系统中
+    eAiboxRestoreSuccess,       //恢复系统成功
+    eAiboxRestoreFail,          //恢复系统失败
+    eAiboxFileSendingPause,     //文件发送暂停
+    eAiboxFileSendingResume,    //文件发送恢复
+    eAiboxFileSendingSuccess,   //文件发送成功
+    eAiboxFileSendingFail,      //文件发送失败
 };
 
 typedef struct _OtaInfo
@@ -33,7 +49,7 @@ class TcpServer : public QObject
 {
     Q_OBJECT
 public:
-    explicit TcpServer(QObject *parent = nullptr);
+    explicit TcpServer(MainWindow *w, QObject *parent = nullptr);
     ~TcpServer();
 
 private:
@@ -44,7 +60,14 @@ private:
     void processRestorePacket();
     void processStopPacket();
 
+    void sendFinishMsg(int result);
     void writePacket(qint32 packetDataSize, PacketType type, const QByteArray& data);
+
+    void setWakeup();
+public:
+    bool isSpaceEnough();
+    void startUpdate();
+    void startRestore();
 
 signals:
 
@@ -66,6 +89,8 @@ private:
     QFile m_file;
 
     int m_num;
+
+    MainWindow *m_w;
 };
 
 #endif // TCPSERVER_H
