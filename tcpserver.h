@@ -9,7 +9,7 @@
 #include <QString>
 #include <QFile>
 #include <string>
-#include "mainwindow.h"
+#include "updatewindow.h"
 
 using namespace std;
 
@@ -22,6 +22,18 @@ enum class PacketType : char
     Stop
 };
 
+enum emResultState
+{
+    Idle = 0,               // 空闲状态
+    UpdateSuccess = 1,      // 升级成功
+    RestoreSuccess = 2,     // 恢复成功
+    CmdEror = 3,            //	命令错误
+    UpdateImageError = 4,	// 升级镜像错误
+    UpdateMd5Error = 5,     // 升级校验文件错误
+    RestoreImageError = 6,  // 备份镜像错误
+    RestoreMd5Error = 7     // 备份校验文件错误
+};
+
 enum emAiboxState
 {
     eAiboxIdle= 0,              //空闲状态
@@ -29,12 +41,12 @@ enum emAiboxState
     eAiboxUpdateSuccess,        //升级成功
     eAiboxUpdateFail,           //升级失败
     eAiboxToRestore,            //恢复系统中
-    eAiboxRestoreSuccess,       //恢复系统成功
+    eAiboxRestoreSuccess = 5,   //恢复系统成功
     eAiboxRestoreFail,          //恢复系统失败
     eAiboxFileSendingPause,     //文件发送暂停
     eAiboxFileSendingResume,    //文件发送恢复
     eAiboxFileSendingSuccess,   //文件发送成功
-    eAiboxFileSendingFail,      //文件发送失败
+    eAiboxFileSendingFail = 10, //文件发送失败
 };
 
 typedef struct _OtaInfo
@@ -49,8 +61,23 @@ class TcpServer : public QObject
 {
     Q_OBJECT
 public:
-    explicit TcpServer(MainWindow *w, QObject *parent = nullptr);
+    explicit TcpServer(UpdateWindow *w, QObject *parent = nullptr);
     ~TcpServer();
+
+    /*
+     * 获取上次升级或者恢复的状态
+     */
+    QString getResultState();
+
+    /*
+     * 给客户端发送结束指令，数据为结果的状态
+     */
+    void sendFinishMsg(int result);
+
+    /*
+     * 把从系统返回的状态转换为客户端所需要的状态
+     */
+    emAiboxState switchResultStateToAiboxState(const int &state);
 
 private:
     void processPacket(QByteArray& data, PacketType type);
@@ -60,11 +87,14 @@ private:
     void processRestorePacket();
     void processStopPacket();
 
-    void sendFinishMsg(int result);
     void writePacket(qint32 packetDataSize, PacketType type, const QByteArray& data);
 
+    /*
+     * 设置电脑不休眠
+     */
     void setWakeup();
-public:
+
+
     bool isSpaceEnough();
     void startUpdate();
     void startRestore();
@@ -81,16 +111,16 @@ private:
     QTcpSocket *m_socket;
 
     QByteArray m_buff;
-    int m_headerSize;
-    qint32 m_packetSize;
-    qint64 m_receivedBytes;
+    int m_headerSize; // 头部的字节长度
+    qint32 m_packetSize; // 数据长度
+    qint64 m_receivedBytes; // 接收到的文件大小
 
-    OtaInfo *m_otaInfo;
+    OtaInfo *m_otaInfo; // 保存客户端发过来的文件信息
     QFile m_file;
 
     int m_num;
 
-    MainWindow *m_w;
+    UpdateWindow *m_uw;
 };
 
 #endif // TCPSERVER_H

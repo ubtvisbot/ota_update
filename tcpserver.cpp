@@ -8,24 +8,28 @@
 #include <QDir>
 #include "log.h"
 #include <QLoggingCategory>
+#include <QFile>
 
 Q_LOGGING_CATEGORY(server, "tcpserver")
 
 const static quint16 kPort = 57822;
 const static QString kSavePath = QDir::homePath() + "/oneai";
 const static QString kRecoverPath = "/opt/ota_package/ubtech/recovery.sh";
+const static QString kCompletePath = "/opt/ota_package/ubtech/complete.sh";
+const static QString kStatePath = "/opt/ota_package/ubtech/state";
+const static QString kPauseState = "pause";
 
 static int headTimes = 0;
 static int dataTimes = 0;
 
-TcpServer::TcpServer(MainWindow *w, QObject *parent) : m_w(w), QObject(parent)
+TcpServer::TcpServer(UpdateWindow *w, QObject *parent) : m_uw(w), QObject(parent)
 {
     m_server = new QTcpServer();
     m_server->listen(QHostAddress::Any, kPort);
     connect(m_server, SIGNAL(newConnection()), this, SLOT(onAcceptConnection()));
 
     m_packetSize = -1;
-    m_headerSize = sizeof(PacketType) + sizeof(m_packetSize);
+    m_headerSize = sizeof(PacketType) + sizeof(m_packetSize); // 头部大小等于指令类型长度加数据类型长度
 
     m_otaInfo = new OtaInfo;
 
@@ -48,6 +52,34 @@ TcpServer::~TcpServer()
     }
 }
 
+QString TcpServer::getResultState()
+{
+    qCDebug(server()) << "enter " << __func__;
+    QString state = "";
+
+    system(kCompletePath.toStdString().data()); // 生成上次升级或者恢复后的结果状态
+
+    QFile fp(kStatePath);
+
+    if (!fp.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qCCritical(server()) << "open " << kStatePath << " fail.";
+    }
+    else
+    {
+        char buff[8] = {0};
+        fp.read(buff, sizeof(buff));
+
+        state = buff;
+        if (state.endsWith('\n'))
+        {
+            state = state.left(state.size() - 1);
+        }
+    }
+
+    return state;
+}
+
 void TcpServer::processPacket(QByteArray &data, PacketType type)
 {
     switch (type)
@@ -64,7 +96,8 @@ void TcpServer::processHeaderPacket(QByteArray &data)
 {
     qCDebug(server()) << "enter " << __func__;
 
-    m_w->show();
+    m_uw->show();
+    m_uw->startShowUpdate();
 
     setWakeup();
 
@@ -72,13 +105,14 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     {
         qWarning(server()) << "the free space is not enough!";
         sendFinishMsg(emAiboxState::eAiboxFileSendingPause);
+        Setting::instance().setPauseState(kPauseState);
         startRestore();
         return;
     }
 
     QJsonObject obj = QJsonDocument::fromJson(data).object();
 
-    QString localVersion = Setting::instance().getVersion();
+    QString localVersion = Setting::instance().getVersion(); // 获取本地保存的版本信息
 
     m_otaInfo->fileName = obj.value("FileName").toString();
     m_otaInfo->isSaveData = obj.value("IsSaveData").toBool();
@@ -105,10 +139,11 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     {
         if (localVersion == m_otaInfo->version)
         {
-            m_receivedBytes = fileInfo.size();
+            m_receivedBytes = fileInfo.size(); // 版本匹配，计算已接受文件包的大小
         }
         else
         {
+            // 版本不匹配，删除原文件并重新保存版本号
             QString cmd = "rm -f " + filePath;
             qCDebug(server()) << cmd;
             system(cmd.toStdString().c_str());
@@ -130,6 +165,7 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     PacketType type = PacketType::Header;
     qint32 packetSize = headerData.size();
 
+    // 发送客户端已接收文件的大小
     writePacket(packetSize, type, headerData);
     qCDebug(server()) << "send to client m_receivedBytes: " << m_receivedBytes;
 }
@@ -228,6 +264,13 @@ void TcpServer::processRestorePacket()
 void TcpServer::processStopPacket()
 {
     qCDebug(server()) << "enter " << __func__;
+
+    QByteArray headerData = {0};
+    headerData.resize(0);
+    PacketType type = PacketType::Stop;
+    qint32 packetSize = headerData.size();
+
+    writePacket(packetSize, type, headerData);
 }
 
 void TcpServer::sendFinishMsg(int result)
@@ -245,6 +288,30 @@ void TcpServer::sendFinishMsg(int result)
     writePacket(packetSize, type, headerData);
 }
 
+emAiboxState TcpServer::switchResultStateToAiboxState(const int &state)
+{
+    emResultState eState = (emResultState)state;
+    switch (eState) {
+    case emResultState::RestoreSuccess:
+        return emAiboxState::eAiboxRestoreSuccess;
+
+    case emResultState::UpdateSuccess:
+        return emAiboxState::eAiboxUpdateSuccess;
+
+    case emResultState::RestoreImageError:
+    case emResultState::RestoreMd5Error:
+        return emAiboxState::eAiboxRestoreFail;
+
+    case emResultState::CmdEror:
+    case emResultState::UpdateImageError:
+    case emResultState::UpdateMd5Error:
+        return emAiboxState::eAiboxUpdateFail;
+
+    default:
+        return emAiboxState::eAiboxIdle;
+    }
+}
+
 void TcpServer::writePacket(qint32 packetDataSize, PacketType type, const QByteArray &data)
 {
     qCDebug(server()) << "enter " << __func__;
@@ -258,12 +325,14 @@ void TcpServer::writePacket(qint32 packetDataSize, PacketType type, const QByteA
 
 void TcpServer::setWakeup()
 {
+    qCDebug(server()) << "enter " << __func__;
     QString cmd = "xset dpms 0 0 0";
     system(cmd.toStdString().data());
 }
 
 bool TcpServer::isSpaceEnough()
 {
+    qCDebug(server()) << "enter " << __func__;
     const QString cmd = "df / -l --output=avail | tail -1";
 
     FILE *fp = popen(cmd.toStdString().data(), "r");
@@ -273,7 +342,7 @@ bool TcpServer::isSpaceEnough()
         return false;
     }
 
-    const qint64 needSpace = (qint64)1000*1024*1024*1024;
+    const qint64 needSpace = (qint64)1024*1024;
 
     char result[128] = {0};
     fread(result, 1, sizeof(result), fp);
@@ -295,18 +364,21 @@ bool TcpServer::isSpaceEnough()
 
 void TcpServer::startUpdate()
 {
+    qCDebug(server()) << "enter " << __func__;
     QString update = kRecoverPath + "update";
     system(update.toStdString().data());
 }
 
 void TcpServer::startRestore()
 {
+    qCDebug(server()) << "enter " << __func__;
     QString restore = kRecoverPath + "restore";
     system(restore.toStdString().data());
 }
 
 void TcpServer::onAcceptConnection()
 {
+    qCDebug(server()) << "enter " << __func__;
     m_socket = m_server->nextPendingConnection();
 
     QString ip =  m_socket->peerAddress().toString();
@@ -316,17 +388,32 @@ void TcpServer::onAcceptConnection()
 
     connect(m_socket, SIGNAL(readyRead()), this, SLOT(onReadFromClient()));
     connect(m_socket, &QTcpSocket::disconnected, this, &TcpServer::onDisconnected);
+
+    // 首先判断上次是否为暂停文件发送，如果是给客户端发送“文件发送恢复”命令
+    if (Setting::instance().getPauseState() == kPauseState)
+    {
+        sendFinishMsg(emAiboxState::eAiboxFileSendingResume);
+    }
+    else // 发送aibox的状态给客户端
+    {
+        QString resultState = getResultState();
+
+        emAiboxState state = switchResultStateToAiboxState(resultState.toInt());
+
+        sendFinishMsg(state);
+    }
 }
 
 void TcpServer::onReadFromClient()
 {
+    qCDebug(server()) << "enter " << __func__;
     m_buff.append(m_socket->readAll());
 
     QByteArray data;
 
     while (m_buff.size() >= m_headerSize)
     {
-        if (m_packetSize < 0)
+        if (m_packetSize < 0) // m_packetSize为数据大小
         {
             memcpy(&m_packetSize, m_buff.constData(), sizeof(m_packetSize));
             m_buff.remove(0, sizeof(m_packetSize));
@@ -338,14 +425,14 @@ void TcpServer::onReadFromClient()
         if (m_buff.size() > m_packetSize)
         {
             PacketType type;
-            type = static_cast<PacketType>(m_buff.at(0));
+            type = static_cast<PacketType>(m_buff.at(0)); // 取出指令
             m_buff.remove(0, sizeof(type));
             if (type == PacketType::Data)
             {
                 dataTimes++;
             }
 
-            data = m_buff.mid(0, m_packetSize);
+            data = m_buff.mid(0, m_packetSize); // 取出数据
             qCDebug(server()) << "data number: " << dataTimes << ", type " << (int)type << ",m_packetSize " << m_packetSize << ", remain m_buff size " << m_buff.size();
 
             processPacket(data, type);
@@ -362,10 +449,11 @@ void TcpServer::onReadFromClient()
 
 void TcpServer::onDisconnected()
 {
+    qCDebug(server()) << "enter " << __func__;
     qCDebug(server()) << "Disconnected address " << m_socket->peerAddress();
     qCDebug(server()) << "Disconnected port" <<m_socket->peerPort();
 
-    m_w->hide();
+    m_uw->hide();
     if (m_file.isOpen())
     {
         m_file.close();

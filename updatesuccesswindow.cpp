@@ -29,5 +29,5 @@ UpdateSuccessWindow::~UpdateSuccessWindow()
 
 void UpdateSuccessWindow::on_pushButton_clicked()
 {
-    close();
+    hide();
 }

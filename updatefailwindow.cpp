@@ -35,5 +35,5 @@ UpdateFailWindow::~UpdateFailWindow()
 
 void UpdateFailWindow::on_pushButton_clicked()
 {
-    close();
+    hide();
 }

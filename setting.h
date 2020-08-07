@@ -15,6 +15,9 @@ public:
     QString getVersion();
     void setVersion(const QString &language);
 
+    QString getPauseState();
+    void setPauseState(const QString &state);
+
 protected:
     Setting(const QString &fileName, QSettings::Format format, QObject *parent = nullptr);
     Q_DISABLE_COPY(Setting)
