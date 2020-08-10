@@ -390,6 +390,9 @@ void TcpServer::onAcceptConnection()
     if (Setting::instance().getPauseState() == kPauseState)
     {
         sendFinishMsg(emAiboxState::eAiboxFileSendingResume);
+
+        // 重置状态
+        Setting::instance().setPauseState("no");
     }
     else // 发送aibox的状态给客户端
     {
