@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     if (resultState.toInt() == emResultState::RestoreSuccess || resultState.toInt() == emResultState::UpdateSuccess)
     {
         usw.show();
+        tcpServer.clearUserData();
     }
     else if ( resultState == "" || resultState.toInt() == emResultState::Idle)
     {

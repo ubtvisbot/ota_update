@@ -13,10 +13,13 @@ public:
     void init();
 
     QString getVersion();
-    void setVersion(const QString &language);
+    void setVersion(const QString &version);
 
     QString getPauseState();
     void setPauseState(const QString &state);
+
+    QString getUserDataState();
+    void setUserDataState(const QString &state);
 
 protected:
     Setting(const QString &fileName, QSettings::Format format, QObject *parent = nullptr);

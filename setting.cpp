@@ -6,6 +6,7 @@ QString CONFIG_FILE = QDir::homePath() + "/.config/ota.conf";
 QString CONFIG_OTA_GROUP{"ota_info"};
 QString OTA_VERSION{"ota_version"};
 QString PAUSE_STATE{"pause_state"};
+QString USER_DATA_STATE{"user_data_state"};
 }
 
 Setting::Setting(const QString &fileName, QSettings::Format format, QObject *parent)
@@ -32,9 +33,9 @@ QString Setting::getVersion()
     }
 }
 
-void Setting::setVersion(const QString &language)
+void Setting::setVersion(const QString &version)
 {
-    setValue(OTA_VERSION, language);
+    setValue(OTA_VERSION, version);
     sync();
 }
 
@@ -54,6 +55,25 @@ QString Setting::getPauseState()
 void Setting::setPauseState(const QString &state)
 {
     setValue(PAUSE_STATE, state);
+    sync();
+}
+
+QString Setting::getUserDataState()
+{
+    if (contains(USER_DATA_STATE))
+    {
+        return value(USER_DATA_STATE).toString();
+    }
+    else
+    {
+        return "";
+    }
+
+}
+
+void Setting::setUserDataState(const QString &state)
+{
+    setValue(USER_DATA_STATE, state);
     sync();
 }
 

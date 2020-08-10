@@ -76,6 +76,8 @@ public:
      */
     emAiboxState switchResultStateToAiboxState(const int &state);
 
+    void clearUserData();
+
 private:
     void processPacket(QByteArray& data, PacketType type);
     void processHeaderPacket(QByteArray& data);

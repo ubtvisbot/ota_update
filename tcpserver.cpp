@@ -18,6 +18,10 @@ const static QString kRecoverPath = "/opt/ota_package/ubtech/recovery.sh";
 const static QString kCompletePath = "/opt/ota_package/ubtech/complete.sh";
 const static QString kStatePath = "/opt/ota_package/ubtech/state";
 const static QString kPauseState = "pause";
+const static QString kNoPauseState = "no";
+const static QString kUserDataPath = "/UserData";
+const static QString kSaveData = "save";
+const static QString kClearData = "clear";
 
 static int headTimes = 0;
 static int dataTimes = 0;
@@ -109,6 +113,10 @@ void TcpServer::processHeaderPacket(QByteArray &data)
         startRestore();
         return;
     }
+    else
+    {
+        Setting::instance().setPauseState(kNoPauseState);
+    }
 
     QJsonObject obj = QJsonDocument::fromJson(data).object();
 
@@ -126,6 +134,15 @@ void TcpServer::processHeaderPacket(QByteArray &data)
     {
         sendFinishMsg(emAiboxState::eAiboxFileSendingFail);
         return;
+    }
+
+    if (m_otaInfo->isSaveData)
+    {
+        Setting::instance().setUserDataState(kSaveData);
+    }
+    else
+    {
+        Setting::instance().setUserDataState(kClearData);
     }
 
     QDir dir(kSavePath);
@@ -373,6 +390,19 @@ void TcpServer::startRestore()
     system(restore.toStdString().data());
 }
 
+void TcpServer::clearUserData()
+{
+    if (Setting::instance().getUserDataState() == kClearData)
+    {
+        QString cmd = "rm -rf " + kUserDataPath;
+        system(cmd.toStdString().data());
+    }
+    else
+    {
+        // do nothing
+    }
+}
+
 void TcpServer::onAcceptConnection()
 {
     qCDebug(server()) << "enter " << __func__;
@@ -392,7 +422,7 @@ void TcpServer::onAcceptConnection()
         sendFinishMsg(emAiboxState::eAiboxFileSendingResume);
 
         // 重置状态
-        Setting::instance().setPauseState("no");
+        Setting::instance().setPauseState(kNoPauseState);
     }
     else // 发送aibox的状态给客户端
     {
