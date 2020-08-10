@@ -10,12 +10,13 @@ UpdateFailWindow::UpdateFailWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     setFixedSize(qApp->primaryScreen()->size());
+    setWindowFlags(Qt::FramelessWindowHint);
 
     QPalette pl = this->palette();
     pl.setBrush(QPalette::Background, QBrush(QPixmap(":/img/resources/result/img_bg_cover.png")));
     this->setPalette(pl);
 
-    ui->label_img->setStyleSheet("background: url(:/img/resources/result/img_failed.png)");
+    ui->label_img->setStyleSheet("border-image: url(:/img/resources/result/img_failed.png)");
     ui->label_fail->setStyleSheet("color:#EC7676; font:bold; font-size:20px");
     ui->label_suggest->setStyleSheet("font-size:14px; color:#4C545B; font:bold");
     ui->label_text->setStyleSheet("font-size:14px; color: #4C545B; line-height:20px;");

@@ -13,7 +13,8 @@ UpdateWindow::UpdateWindow(QWidget *parent) :
     ui(new Ui::UpdateWindow)
 {
     ui->setupUi(this);
-    setFixedSize(qApp->primaryScreen()->size());
+    setWindowFlags(Qt::FramelessWindowHint | Qt::CustomizeWindowHint | Qt::WindowStaysOnTopHint | Qt::ToolTip);
+//    setFixedSize(qApp->primaryScreen()->size());
 //    setAttribute(Qt::WA_StyledBackground);
 //    setStyleSheet("border-image:  url(:/img/resources/result/img_bg_cover.png)");
 

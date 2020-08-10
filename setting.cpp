@@ -2,7 +2,7 @@
 #include <QDir>
 
 namespace {
-QString CONFIG_FILE = QDir::homePath() + "/ota.conf";
+QString CONFIG_FILE = QDir::homePath() + "/.config/ota.conf";
 QString CONFIG_OTA_GROUP{"ota_info"};
 QString OTA_VERSION{"ota_version"};
 QString PAUSE_STATE{"pause_state"};

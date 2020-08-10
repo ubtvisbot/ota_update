@@ -12,23 +12,21 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     Log::instance().init();
-    MainWindow w;
-    w.hide();
+
     UpdateWindow uw;
     UpdateSuccessWindow usw;
     UpdateFailWindow ufw;
-//    usw.show();
-//    ufw.show();
-//    uw.show();
-//    uw.startShowUpdate();
-//    w.show();
+    usw.show();
+    ufw.show();
+    uw.show();
+    uw.startShowUpdate();
+
     TcpServer tcpServer(&uw);
 
     QString resultState = tcpServer.getResultState();
 
     if (resultState.toInt() == emResultState::RestoreSuccess || resultState.toInt() == emResultState::UpdateSuccess)
     {
-//        UpdateSuccessWindow usw;
         usw.show();
     }
     else if ( resultState == "" || resultState.toInt() == emResultState::Idle)
@@ -38,7 +36,6 @@ int main(int argc, char *argv[])
     }
     else
     {
-//        UpdateFailWindow ufw;
         ufw.show();
     }
 

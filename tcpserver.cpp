@@ -13,7 +13,7 @@
 Q_LOGGING_CATEGORY(server, "tcpserver")
 
 const static quint16 kPort = 57822;
-const static QString kSavePath = QDir::homePath() + "/oneai";
+const static QString kSavePath = "/opt/ota_package/ubtech";
 const static QString kRecoverPath = "/opt/ota_package/ubtech/recovery.sh";
 const static QString kCompletePath = "/opt/ota_package/ubtech/complete.sh";
 const static QString kStatePath = "/opt/ota_package/ubtech/state";
@@ -299,12 +299,9 @@ emAiboxState TcpServer::switchResultStateToAiboxState(const int &state)
         return emAiboxState::eAiboxUpdateSuccess;
 
     case emResultState::RestoreImageError:
-    case emResultState::RestoreMd5Error:
         return emAiboxState::eAiboxRestoreFail;
 
-    case emResultState::CmdEror:
     case emResultState::UpdateImageError:
-    case emResultState::UpdateMd5Error:
         return emAiboxState::eAiboxUpdateFail;
 
     default:

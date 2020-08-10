@@ -10,12 +10,13 @@ UpdateSuccessWindow::UpdateSuccessWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     setFixedSize(qApp->primaryScreen()->size());
+    setWindowFlags(Qt::FramelessWindowHint);
 
     QPalette pl = this->palette();
     pl.setBrush(QPalette::Background, QBrush(QPixmap(":/img/resources/result/img_bg_cover.png")));
     this->setPalette(pl);
 
-    ui->label->setStyleSheet("background: url(:/img/resources/result/img_success.png)");
+    ui->label->setStyleSheet("border-image: url(:/img/resources/result/img_success.png)");
     ui->label_2->setStyleSheet("font:bold; color:#71C481");
     ui->pushButton->setStyleSheet("background:#71C481; color:#FFFFFF; border:none; border-radius:5px");
     ui->pushButton->setFlat(false);

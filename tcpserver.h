@@ -27,11 +27,8 @@ enum emResultState
     Idle = 0,               // 空闲状态
     UpdateSuccess = 1,      // 升级成功
     RestoreSuccess = 2,     // 恢复成功
-    CmdEror = 3,            //	命令错误
-    UpdateImageError = 4,	// 升级镜像错误
-    UpdateMd5Error = 5,     // 升级校验文件错误
-    RestoreImageError = 6,  // 备份镜像错误
-    RestoreMd5Error = 7     // 备份校验文件错误
+    UpdateImageError = 3,	// 升级镜像错误
+    RestoreImageError = 4,  // 备份镜像错误
 };
 
 enum emAiboxState
