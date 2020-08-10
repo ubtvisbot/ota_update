@@ -362,14 +362,14 @@ bool TcpServer::isSpaceEnough()
 void TcpServer::startUpdate()
 {
     qCDebug(server()) << "enter " << __func__;
-    QString update = kRecoverPath + "update";
+    QString update = kRecoverPath + " update";
     system(update.toStdString().data());
 }
 
 void TcpServer::startRestore()
 {
     qCDebug(server()) << "enter " << __func__;
-    QString restore = kRecoverPath + "restore";
+    QString restore = kRecoverPath + " restore";
     system(restore.toStdString().data());
 }
 
