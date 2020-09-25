@@ -2,7 +2,6 @@
 #define UPDATEFAILWINDOW_H
 
 #include <QWidget>
-#include "updatewindow.h"
 
 namespace Ui {
 class UpdateFailWindow;
@@ -15,6 +14,7 @@ class UpdateFailWindow : public QWidget
 public:
     explicit UpdateFailWindow(QWidget *parent = 0);
     ~UpdateFailWindow();
+    void setLabelResult(QString result);
 
 private slots:
     void on_pushButton_clicked();

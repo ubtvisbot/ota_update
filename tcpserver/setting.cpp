@@ -2,11 +2,13 @@
 #include <QDir>
 
 namespace {
-QString CONFIG_FILE = QDir::homePath() + "/.config/ota.conf";
+//QString CONFIG_FILE = QDir::homePath() + "/.cache/ota.conf";
+QString CONFIG_FILE = "/home/oneai/userdata/.otaupdate/ota.conf";
 QString CONFIG_OTA_GROUP{"ota_info"};
 QString OTA_VERSION{"ota_version"};
 QString PAUSE_STATE{"pause_state"};
 QString USER_DATA_STATE{"user_data_state"};
+QString AIBOX_STATE{"aibox_state"};
 }
 
 Setting::Setting(const QString &fileName, QSettings::Format format, QObject *parent)
@@ -49,7 +51,6 @@ QString Setting::getPauseState()
     {
         return "";
     }
-
 }
 
 void Setting::setPauseState(const QString &state)
@@ -68,12 +69,30 @@ QString Setting::getUserDataState()
     {
         return "";
     }
-
 }
 
 void Setting::setUserDataState(const QString &state)
 {
     setValue(USER_DATA_STATE, state);
+    sync();
+}
+
+QString Setting::getAiboxState()
+{
+    if (contains(AIBOX_STATE))
+    {
+        return value(AIBOX_STATE).toString();
+    }
+    else
+    {
+        return "";
+    }
+
+}
+
+void Setting::setAiboxState(const QString &state)
+{
+    setValue(AIBOX_STATE, state);
     sync();
 }
 

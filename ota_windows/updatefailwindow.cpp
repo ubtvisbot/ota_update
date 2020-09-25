@@ -3,6 +3,10 @@
 #include <QPalette>
 #include <QBrush>
 #include <QScreen>
+#include <QDebug>
+
+extern const QString kUpdate;
+extern const QString kRestore;
 
 UpdateFailWindow::UpdateFailWindow(QWidget *parent) :
     QWidget(parent),
@@ -10,7 +14,8 @@ UpdateFailWindow::UpdateFailWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     setFixedSize(qApp->primaryScreen()->size());
-    setWindowFlags(Qt::FramelessWindowHint);
+//    setWindowFlags(Qt::FramelessWindowHint);
+    setWindowFlags(Qt::FramelessWindowHint | Qt::CustomizeWindowHint | Qt::WindowStaysOnTopHint | Qt::ToolTip);
 
     QPalette pl = this->palette();
     pl.setBrush(QPalette::Background, QBrush(QPixmap(":/img/resources/result/img_bg_cover.png")));
@@ -34,7 +39,20 @@ UpdateFailWindow::~UpdateFailWindow()
     delete ui;
 }
 
+void UpdateFailWindow::setLabelResult(QString result)
+{
+    if (result == kUpdate)
+    {
+        ui->label_fail->setText("升级失败");
+    }
+    else if (result == kRestore)
+    {
+        ui->label_fail->setText("恢复失败");
+    }
+}
+
 void UpdateFailWindow::on_pushButton_clicked()
 {
+    qDebug() << __func__;
     hide();
 }

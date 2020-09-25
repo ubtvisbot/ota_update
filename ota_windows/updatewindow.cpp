@@ -14,22 +14,23 @@ UpdateWindow::UpdateWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     setWindowFlags(Qt::FramelessWindowHint | Qt::CustomizeWindowHint | Qt::WindowStaysOnTopHint | Qt::ToolTip);
-//    setFixedSize(qApp->primaryScreen()->size());
+    setFixedSize(qApp->primaryScreen()->size());
 //    setAttribute(Qt::WA_StyledBackground);
 //    setStyleSheet("border-image:  url(:/img/resources/result/img_bg_cover.png)");
+//    setFixedSize(300, 300);
 
     QPalette pl = this->palette();
     pl.setBrush(QPalette::Background, QBrush(QPixmap(":/img/resources/result/img_bg_cover.png")));
     this->setPalette(pl);
 
-    m_UpdateTimer = new QTimer(this);
-    m_UpdateTimer->setInterval(60);
+    m_pUpdateTimer = new QTimer(this);
+    m_pUpdateTimer->setInterval(60);
 
-    m_index = 0;
+    m_nIndex = 0;
 
     loadImages();
 
-    connect(m_UpdateTimer, &QTimer::timeout, this, &UpdateWindow::showUpdateImages);
+    connect(m_pUpdateTimer, &QTimer::timeout, this, &UpdateWindow::showUpdateImages);
 }
 
 UpdateWindow::~UpdateWindow()
@@ -60,27 +61,27 @@ void UpdateWindow::loadImages()
     for(auto file : fileInfoList)
     {
 //        std::shared_ptr<QString> (new QPixmap(file.absoluteFilePath()));
-        m_UpdatePixmapPath.append(file.absoluteFilePath());
+        m_updatePixmapPath.append(file.absoluteFilePath());
     }
 }
 
 void UpdateWindow::showUpdateImages()
 {
-    int maxNum = m_UpdatePixmapPath.size();
+    int maxNum = m_updatePixmapPath.size();
 
     // 循环显示序列帧
     if(maxNum > 0)
     {
 //        ui->label->setPixmap(*m_UpdatePixmaps.at(m_index));
-        QString path = m_UpdatePixmapPath.at(m_index);
+        QString path = m_updatePixmapPath.at(m_nIndex);
         QString style = "border-image: url(" + path + ")";
         ui->label->setStyleSheet(style);
 
-        m_index = (m_index + 1) % maxNum;
+        m_nIndex = (m_nIndex + 1) % maxNum;
     }
 }
 
 void UpdateWindow::startShowUpdate()
 {
-    m_UpdateTimer->start();
+    m_pUpdateTimer->start();
 }

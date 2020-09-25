@@ -1,0 +1,14 @@
+[Unit]
+Description=ota update
+Requires=basic.target avahi-daemon.service 
+After=basic.target avahi-daemon.service network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/tcpserver
+#User=oneai
+#Type=oneshot
+
+[Install]
+#WantedBy=graphical.target
+WantedBy=multi-user.target

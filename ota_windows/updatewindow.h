@@ -26,9 +26,9 @@ private:
     Ui::UpdateWindow *ui;
 
 //    QList<std::shared_ptr<QPixmap>> m_UpdatePixmaps;
-    QList<QString> m_UpdatePixmapPath;
-    QTimer *m_UpdateTimer;
-    int m_index;
+    QList<QString> m_updatePixmapPath;
+    QTimer *m_pUpdateTimer;
+    int m_nIndex;
 };
 
 #endif // UPDATEWINDOW_H

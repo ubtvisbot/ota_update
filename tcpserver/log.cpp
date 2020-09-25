@@ -10,7 +10,8 @@
 #include <time.h>
 
 namespace {
-const QString kRelativeLogPath{"/.cache/oneai/"};
+//const QString kLogPath = QDir::homePath() + "/.cache";
+const QString kLogPath{"/var/cache/oneai"};
 const QString kLogFileName{"tcpserver.log"};
 }
 
@@ -76,7 +77,10 @@ void LogPrinter::onNewMessageToPrint()
     fprintf(stderr, "%s\n", qPrintable(message));
 
     QFile log_file(m_log_file);
-    log_file.open(QIODevice::WriteOnly | QIODevice::Append);
+    if (!log_file.open(QIODevice::WriteOnly | QIODevice::Append))
+    {
+        return;
+    }
     QTextStream text_stream(&log_file);
     text_stream << message;
     log_file.flush();
@@ -92,17 +96,17 @@ void LogPrinter::run()
 void Log::init()
 {
     QDir dir;
-    QString home_path = QDir::homePath();
-    QString log_path = home_path + kRelativeLogPath;
-    QString log_file = log_path + kLogFileName;
+//    QString home_path = QDir::homePath();
 
-    if(false == dir.exists(log_path))
+    QString logFile = kLogPath + "/" + kLogFileName;
+
+    if(false == dir.exists(kLogPath))
     {
         // create dir
-        dir.mkpath(log_path);
+        dir.mkpath(kLogPath);
     }
 
-    m_printer_thread = new LogPrinter(log_file);
+    m_printer_thread = new LogPrinter(logFile);
 
     connect(this, &Log::newMessageToPrint, m_printer_thread,
             &LogPrinter::onNewMessageToPrint, Qt::QueuedConnection);

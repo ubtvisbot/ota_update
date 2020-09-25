@@ -15,6 +15,8 @@ public:
     explicit UpdateSuccessWindow(QWidget *parent = 0);
     ~UpdateSuccessWindow();
 
+    void setLabelResult(QString result);
+
 private slots:
     void on_pushButton_clicked();
 

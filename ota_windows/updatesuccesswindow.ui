@@ -96,7 +96,7 @@
     </spacer>
    </item>
    <item>
-    <widget class="QLabel" name="label_2">
+    <widget class="QLabel" name="label_success">
      <property name="font">
       <font>
        <pointsize>20</pointsize>

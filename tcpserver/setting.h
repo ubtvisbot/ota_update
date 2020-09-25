@@ -21,6 +21,9 @@ public:
     QString getUserDataState();
     void setUserDataState(const QString &state);
 
+    QString getAiboxState();
+    void setAiboxState(const QString &state);
+
 protected:
     Setting(const QString &fileName, QSettings::Format format, QObject *parent = nullptr);
     Q_DISABLE_COPY(Setting)

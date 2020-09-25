@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=Ota Update Windows
+Comment=Ota Update Windows
+Exec=/usr/bin/ota_windows
+StartupNotify=false
+Terminal=false
+

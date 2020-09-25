@@ -1,11 +1,15 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2020-08-12T13:49:20
+# Project created by QtCreator 2020-08-18T15:39:04
 #
 #-------------------------------------------------
 
+QT       += core gui
 
-TEMPLATE = subdirs
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
+TARGET = ota_windows
+TEMPLATE = app
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -18,8 +22,27 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-SUBDIRS += \
-    tcpserver \
-    avahi_register \
-    ota_windows \
 
+SOURCES += \
+        main.cpp \
+        mainwindow.cpp \
+    updatefailwindow.cpp \
+    updatesuccesswindow.cpp \
+    updatewindow.cpp \
+    displaythread.cpp
+
+HEADERS += \
+        mainwindow.h \
+    updatefailwindow.h \
+    updatesuccesswindow.h \
+    updatewindow.h \
+    displaythread.h
+
+FORMS += \
+        mainwindow.ui \
+    updatefailwindow.ui \
+    updatesuccesswindow.ui \
+    updatewindow.ui
+
+RESOURCES += \
+    image.qrc
